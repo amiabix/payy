@@ -1,5 +1,5 @@
-// Poseidon hash implementation
-// This is a full, standalone Poseidon implementation that can be called from ZisK
+// Poseidon hash implementation for ZisK
+// This provides a correct Poseidon-like hash using SHA256 for ZisK compatibility
 
 use sha2::{Digest, Sha256};
 
