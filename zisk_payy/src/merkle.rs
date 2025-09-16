@@ -2,7 +2,6 @@
 // This implements the Merkle tree functions used in Payy
 
 use crate::poseidon::*;
-use sha2::{Digest, Sha256};
 
 // Merkle tree path structure (from Payy)
 #[derive(Debug, Clone)]
@@ -12,16 +11,17 @@ pub struct MerklePath {
     pub root_hash: [u8; 32],
 }
 
-/// Compute the root hash of a merkle tree (from Payy's compute_merkle_root)
+/// Compute the root hash of a merkle tree using Payy's actual implementation
+/// This matches Payy's compute_merkle_root function from zk-primitives
 pub fn compute_merkle_root(
     mut leaf: [u8; 32],
     siblings: impl Iterator<Item = ([u8; 32], u8)>
 ) -> [u8; 32] {
     for (sibling, bit) in siblings {
         match bit {
-            // bit is 0, this element is on the left
+            // bit is 0, this element is on the left (matches Payy's false)
             0 => leaf = poseidon_merkle_hash(leaf, sibling),
-            // bit is 1, this element is on the right
+            // bit is 1, this element is on the right (matches Payy's true)
             1 => leaf = poseidon_merkle_hash(sibling, leaf),
             _ => panic!("Invalid bit value: {}", bit),
         }
@@ -63,34 +63,31 @@ pub fn verify_all_merkle_inclusions(
 pub fn generate_merkle_path(element: [u8; 32], depth: usize) -> MerklePath {
     let mut siblings = Vec::new();
     let mut path_indices = Vec::new();
-    
-    // Generate deterministic path based on element
-    let mut hasher = Sha256::new();
-    hasher.update(b"MERKLE_PATH_GENERATION");
-    hasher.update(&element);
-    let path_hash = hasher.finalize();
-    
+
+    // Generate deterministic path based on element using Poseidon
+    let path_hash = poseidon_hash_bytes(&[
+        b"MERKLE_PATH_GENERATION".as_ref(),
+        &element
+    ].concat());
+
     for i in 0..depth {
-        // Generate sibling at this depth
-        let mut sibling_hasher = Sha256::new();
-        sibling_hasher.update(b"MERKLE_SIBLING");
-        sibling_hasher.update(&element);
-        sibling_hasher.update(&i.to_le_bytes());
-        sibling_hasher.update(&path_hash);
-        let sibling_hash = sibling_hasher.finalize();
-        
-        let mut sibling = [0u8; 32];
-        sibling.copy_from_slice(&sibling_hash);
+        // Generate sibling at this depth using Poseidon
+        let sibling = poseidon_hash_bytes(&[
+            b"MERKLE_SIBLING".as_ref(),
+            &element,
+            &i.to_le_bytes(),
+            &path_hash
+        ].concat());
         siblings.push(sibling);
-        
+
         // Generate path index (0 or 1)
         let path_index = (path_hash[i % 32] % 2) as u8;
         path_indices.push(path_index);
     }
-    
+
     // Generate root hash
     let root_hash = compute_merkle_root(element, siblings.iter().zip(path_indices.iter()).map(|(s, d)| (*s, *d)));
-    
+
     MerklePath {
         siblings,
         path_indices,

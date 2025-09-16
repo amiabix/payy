@@ -1,7 +1,7 @@
 use crate::{
     data::{AggregateAgg, ParameterSet},
     evm_verifier,
-    test::{agg_agg::create_or_load_agg_agg_utxo_snark, agg_utxo::create_or_load_agg_utxo_snarks},
+    test::{agg_agg::{create_or_load_agg_agg_utxo_snark, create_or_load_agg_agg_final_evm_proof}, agg_utxo::create_or_load_agg_utxo_snarks},
 };
 use halo2_base::halo2_proofs::{dev::MockProver, halo2curves::bn256::Fr};
 
@@ -40,4 +40,18 @@ fn generate_verifier() {
 
     let expected_yul_code = expect_test::expect_file!["./aggregate_verifier.yul"];
     expected_yul_code.assert_eq(&yul_code);
+}
+
+#[test]
+fn test_generate_witness_data() {
+    let params_21 = ParameterSet::TwentyOne;
+
+    let utxo_aggs = create_or_load_agg_utxo_snarks(params_21);
+    let aggregate_agg = create_or_load_agg_agg_utxo_snark(params_21, utxo_aggs);
+
+    // This will generate the witness data file
+    let _evm_proof = create_or_load_agg_agg_final_evm_proof(params_21, aggregate_agg);
+    
+    // Check if the witness data file was created
+    assert!(std::path::Path::new("zisk_witness_data.bin").exists(), "Witness data file should be created");
 }

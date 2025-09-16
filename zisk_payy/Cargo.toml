@@ -15,7 +15,7 @@ sha2 = "0.10.8"
 ziskos = { git = "https://github.com/0xPolygonHermez/zisk.git" }
 
 # Cryptographic implementations for ZisK
-secp256k1 = "0.23.0"
+hex = "0.4"
 
 [profile.dev]
 opt-level = 0
